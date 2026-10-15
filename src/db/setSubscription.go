@@ -9,6 +9,9 @@ import (
 )
 
 func SetSubscription(keyID string, bwLimit int64, subExpiry string, bwReset bool) (bool, map[string]string) {
+	peerMu.Lock()
+	defer peerMu.Unlock()
+
 	var subStructModify Subscription
 	db := DBSystem
 	responseMap := make(map[string]string)

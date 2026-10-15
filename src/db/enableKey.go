@@ -9,6 +9,9 @@ import (
 )
 
 func EnableKey(keyID string) (bool, map[string]string) {
+	peerMu.Lock()
+	defer peerMu.Unlock()
+
 	var keyStruct Key
 	var ipStruct IP
 	responseMap := make(map[string]string)
@@ -38,6 +41,7 @@ func EnableKey(keyID string) (bool, map[string]string) {
 		return false, responseMap
 	}
 	ipv6Addr := ipStruct.IPv6Address
+	forgetPeerBW(pubKey)
 	boolRes, stringRes := manager.AddKey("wg0", ipv4Addr, ipv6Addr, pubKey, preKey) //add key to wg interface
 	if boolRes {
 		responseMap["response"] = "Enabled key successfully"

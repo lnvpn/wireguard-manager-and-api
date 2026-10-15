@@ -9,6 +9,12 @@ import (
 )
 
 func DisableKey(keyID string) (bool, map[string]string) {
+	peerMu.Lock()
+	defer peerMu.Unlock()
+	return disableKey(keyID)
+}
+
+func disableKey(keyID string) (bool, map[string]string) {
 	var keyStruct Key
 	responseMap := make(map[string]string)
 	db := DBSystem
@@ -28,6 +34,7 @@ func DisableKey(keyID string) (bool, map[string]string) {
 	}
 	pubKey := keyStruct.PublicKey
 	boolRes, stringRes := manager.DeleteKey("wg0", pubKey) //delete key from wg interface
+	forgetPeerBW(pubKey)
 	if boolRes {
 		responseMap["response"] = "Disabled key successfully"
 	} else {

@@ -10,6 +10,9 @@ import (
 )
 
 func DeleteKey(keyID string) (bool, map[string]string) {
+	peerMu.Lock()
+	defer peerMu.Unlock()
+
 	var ipStruct IP
 	var keyStruct Key
 	var subStruct Subscription
@@ -53,6 +56,7 @@ func DeleteKey(keyID string) (bool, map[string]string) {
 		return false, responseMap
 	}
 	boolRes, stringRes := manager.DeleteKey("wg0", pubKey) //delete key from wg interface
+	forgetPeerBW(pubKey)
 	responseMap["response"] = stringRes
 	return boolRes, responseMap
 }

@@ -8,12 +8,11 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+// Active sessions re-handshake every 2 minutes and WireGuard rejects session keys
+// after 3 minutes, so a peer idle for longer than this has no live session to break.
+const idlePeerResetAfter = 5 * time.Minute
+
 func AddRemovePeer(peer wgtypes.Peer, wgIntName string) bool { //add and readds clients based on if a time to last connection has been reached
-	client, errInstance := createInstance()
-	if errInstance != nil {
-		log.Println("Create instance", errInstance)
-		return false
-	}
 	//get each peer in the wg interface
 	lastConnection := peer.LastHandshakeTime                      //get handshake time of peer
 	currentTime := time.Now().UTC()                               //get current time
@@ -22,8 +21,15 @@ func AddRemovePeer(peer wgtypes.Peer, wgIntName string) bool { //add and readds 
 		return false
 	}
 
-	handshakeAfterDeadline := lastConnection.Add(time.Minute * 1)                     //add 5 minutes to last connection
-	if currentTime.After(handshakeAfterDeadline) && !lastConnection.Equal(zeroTime) { //compare now and 5 minutes after last connection
+	handshakeAfterDeadline := lastConnection.Add(idlePeerResetAfter)
+	if currentTime.After(handshakeAfterDeadline) && !lastConnection.Equal(zeroTime) {
+		client, errInstance := createInstance()
+		if errInstance != nil {
+			log.Println("Create instance", errInstance)
+			return false
+		}
+		defer closeInstance(client)
+
 		allowedIPs := peer.AllowedIPs        //get IPs of client
 		publicKey := peer.PublicKey          //get public key of client
 		presharedKey := peer.PresharedKey    //get preshared key of client
@@ -62,6 +68,5 @@ func AddRemovePeer(peer wgtypes.Peer, wgIntName string) bool { //add and readds 
 	} else {
 		return false
 	}
-	closeInstance(client) //release resources and close instance
 	return true
 }
