@@ -1,8 +1,7 @@
-version: "3"
-
 services:
     wireguard-manager-and-api:
-      image:  registry.gitlab.com/mawthuq-software/wireguard-manager-and-api:main
+      image: ghcr.io/lnvpn/wireguard-manager-and-api:v0.7.0
+      restart: unless-stopped
       volumes:
       - /etc/letsencrypt:/etc/letsencrypt
       - /opt/wgManagerAPI:/opt/wgManagerAPI

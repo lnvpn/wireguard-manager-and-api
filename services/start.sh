@@ -1,6 +1,9 @@
 #!/bin/bash
-sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-sudo iptables -A FORWARD -i wg0 -j ACCEPT;
-sudo systemctl start coredns
-sudo systemctl enable coredns
-sudo ./main
+set -e
+
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+iptables -A FORWARD -i wg0 -j ACCEPT
+
+/app/coredns --conf /app/Corefile &
+
+exec ./main

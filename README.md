@@ -1,10 +1,13 @@
-[![Discord](https://img.shields.io/discord/900096719482654780?color=D6AD5B&labelColor=131313&style=for-the-badge&label=Discord&logo=discord)](https://discord.gg/fXMzVqb3qB "Chat and get support from the team and community.")
-[![Gitlab](https://img.shields.io/gitlab/pipeline-status/mawthuq-software/wireguard-manager-and-api?branch=main&color=D6AD5B&labelColor=131313&logoColor=D6AD5B&style=for-the-badge&label=Main-Branch&logo=gitlab)](https://g.codefresh.io/public/accounts/sunnahvpn/pipelines/new/610a9aa2b902ba4976f1c58d?filter=page:1 "View public build logs for docker container.")
-[![GitHub Downloads](https://img.shields.io/github/downloads/Mawthuq-Software/wireguard-manager-and-api/total?color=D6AD5B&labelColor=131313&style=for-the-badge&label=Downloads&logo=github)](https://github.com/Mawthuq-Software/wireguard-manager-and-api "Download the API today")
-
 # Wireguard Manager And API
 
-A manager and API to add, remove clients as well as other features such as an auto reapplier which deletes and adds back a client after inactivity to increase their privacy by removing their IP address from memory.
+> Maintained fork of [Mawthuq-Software/wireguard-manager-and-api](https://github.com/Mawthuq-Software/wireguard-manager-and-api) (unmaintained since April 2022), used by [nadanada](https://nadanada.me). Images are published to `ghcr.io/lnvpn/wireguard-manager-and-api` for every `v*` tag.
+>
+> Changes since upstream `v0.6-alpha`:
+> - The auto reapplier only resets peers idle for more than 5 minutes (was 1 minute, which wiped live sessions every 10 minutes and stalled traffic for ~15 seconds).
+> - Bandwidth usage is written to the subscription every minute instead of only when a peer is reset.
+> - Go 1.26, current dependencies, Debian trixie base image, pinned and checksum-verified CoreDNS.
+
+A manager and API to add, remove clients as well as other features such as an auto reapplier which deletes and adds back a client after 5 minutes of inactivity to increase their privacy by removing their IP address from memory.
 
 This GoLang application runs an API which can be made **https** ready using a LetsEncrypt certificate. The program creates directories in the directory ``/opt/wgManagerAPI`` (This needs to be created manually before hand). In the ``/opt/wgManagerAPI`` directory we have a few more sub-directories such as ``/logs`` which contain logs of the application and ``/wg`` which contains our SQLite database.
 
@@ -69,7 +72,7 @@ version: "3"
 
 services:
     wireguard-manager-and-api:
-      image:  registry.gitlab.com/mawthuq-software/wireguard-manager-and-api:main
+      image: ghcr.io/lnvpn/wireguard-manager-and-api:v0.7.0
       volumes:
       - /etc/letsencrypt:/etc/letsencrypt
       - /opt/wgManagerAPI:/opt/wgManagerAPI

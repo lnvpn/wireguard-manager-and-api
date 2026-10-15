@@ -1,52 +1,30 @@
-# Filename: Dockerfile 
-FROM golang:buster
-WORKDIR /usr/src/wireguard-manager-and-api
+FROM golang:1.26-trixie AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . .
+RUN CGO_ENABLED=1 go build -trimpath -ldflags="-s -w" -o /out/main .
 
-RUN echo 'deb http://ftp.debian.org/debian buster-backports main' | tee /etc/apt/sources.list.d/buster-backports.list
-RUN apt-get update
-RUN apt-get install sudo -y \
-    wireguard \
-    dkms \
-	git \
-	gnupg \ 
-	ifupdown \
-	iproute2 \
-	iptables \
-	iputils-ping \
-	jq \
-	libc6 \
-	libelf-dev \
-	net-tools \
-	openresolv \
-	systemctl
-RUN go build main.go
-RUN adduser --disabled-password --gecos '' docker
-RUN adduser docker sudo
-RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-RUN \
-mkdir /app && \
-echo "**** install CoreDNS ****" && \
-COREDNS_VERSION=$(curl -sX GET "https://api.github.com/repos/coredns/coredns/releases/latest" \
-	| awk '/tag_name/{print $4;exit}' FS='[""]' | awk '{print substr($1,2); }') && \
- curl -o \
-	/tmp/coredns.tar.gz -L \
-	"https://github.com/coredns/coredns/releases/download/v${COREDNS_VERSION}/coredns_${COREDNS_VERSION}_linux_amd64.tgz" && \
- tar xf \
-	/tmp/coredns.tar.gz -C \
-	/app && \
- echo "**** clean up ****" && \
- rm -rf \
-	/tmp/* \
-	/var/lib/apt/lists/* \
-	/var/tmp/*
-RUN mv Corefile /app/Corefile 
-USER docker
-RUN sudo mv services/coredns.service /etc/systemd/system/
-RUN sudo systemctl daemon-reload
-RUN sudo chmod +x services/start.sh  
+FROM debian:trixie-slim
+ARG TARGETARCH=amd64
+ARG COREDNS_VERSION=1.14.7
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates curl iproute2 iptables wireguard-tools \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir /app \
+ && cd /tmp \
+ && curl -fsSLO "https://github.com/coredns/coredns/releases/download/v${COREDNS_VERSION}/coredns_${COREDNS_VERSION}_linux_${TARGETARCH}.tgz" \
+ && curl -fsSLO "https://github.com/coredns/coredns/releases/download/v${COREDNS_VERSION}/coredns_${COREDNS_VERSION}_linux_${TARGETARCH}.tgz.sha256" \
+ && sha256sum -c "coredns_${COREDNS_VERSION}_linux_${TARGETARCH}.tgz.sha256" \
+ && tar xzf "coredns_${COREDNS_VERSION}_linux_${TARGETARCH}.tgz" -C /app \
+ && rm -rf /tmp/*
+
+WORKDIR /usr/src/wireguard-manager-and-api
+COPY Corefile /app/Corefile
+COPY services/start.sh services/start.sh
+COPY --from=build /out/main main
 
 EXPOSE 8443 51820/udp
-CMD ["sudo", "./services/start.sh"]
-
-USER docker
+CMD ["./services/start.sh"]
