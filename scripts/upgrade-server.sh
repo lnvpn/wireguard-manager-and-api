@@ -11,8 +11,12 @@ IMAGE="ghcr.io/lnvpn/wireguard-manager-and-api:${TAG}"
 
 ssh -o BatchMode=yes "$HOST" IMAGE="$IMAGE" bash -s <<'EOF'
 set -euo pipefail
-cd /opt/wgManagerAPI
+OLD=$(docker ps --format "{{.ID}} {{.Image}}" | awk '/wireguard-manager-and-api/ {print $1; exit}')
+COMPOSE_DIR=$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' "$OLD" 2>/dev/null || true)
+cd "${COMPOSE_DIR:-/opt/wgManagerAPI}"
+echo "compose dir: $PWD"
 if command -v docker-compose >/dev/null; then DC="docker-compose"; else DC="docker compose"; fi
+PEERS_BEFORE=$(docker exec -u 0 "$OLD" wg show wg0 peers | wc -l)
 
 docker pull -q "$IMAGE"
 
@@ -33,7 +37,7 @@ fi
 sleep 10
 C=$($DC ps -q | head -1)
 docker ps --filter "id=$C" --format "{{.Names}} {{.Status}} {{.Image}}"
-echo "peers on wg0: $(docker exec "$C" wg show wg0 peers | wc -l)"
+echo "peers on wg0: before=$PEERS_BEFORE after=$(docker exec -u 0 "$C" wg show wg0 peers | wc -l)"
 echo "backup: /root/wgManagerAPI-backup-$TS.tgz"
-echo "rollback: cd /opt/wgManagerAPI && cp /root/docker-compose.yml.$TS docker-compose.yml && $DC down && $DC up -d"
+echo "rollback: cd $PWD && cp /root/docker-compose.yml.$TS docker-compose.yml && $DC down && $DC up -d"
 EOF
