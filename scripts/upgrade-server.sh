@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# Usage: scripts/upgrade-server.sh root@host [tag]
+# Usage: [SSH_PORT=2299] scripts/upgrade-server.sh user@host [tag]
 # Switches a server's /opt/wgManagerAPI compose stack to ghcr.io/lnvpn/wireguard-manager-and-api:<tag>.
 # Config and database are backed up to /root first; if the new container fails to start, the
-# previous compose file is restored and started again.
+# previous compose file is restored and started again. Non-root users need passwordless sudo.
 set -euo pipefail
 
-HOST="${1:?usage: $0 root@host [tag]}"
+HOST="${1:?usage: [SSH_PORT=22] $0 user@host [tag]}"
 TAG="${2:-v0.7.0}"
 IMAGE="ghcr.io/lnvpn/wireguard-manager-and-api:${TAG}"
 
-ssh -o BatchMode=yes "$HOST" IMAGE="$IMAGE" bash -s <<'EOF'
+ssh -o BatchMode=yes -p "${SSH_PORT:-22}" "$HOST" \
+  "S=; [ \"\$(id -u)\" != 0 ] && S='sudo -n'; \$S env IMAGE='$IMAGE' bash -s" <<'EOF'
 set -euo pipefail
 OLD=$(docker ps --format "{{.ID}} {{.Image}}" | awk '/wireguard-manager-and-api/ {print $1; exit}')
 COMPOSE_DIR=$(docker inspect -f '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' "$OLD" 2>/dev/null || true)
